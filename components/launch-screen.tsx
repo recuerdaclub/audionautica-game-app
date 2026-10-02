@@ -97,9 +97,10 @@ export function LaunchScreen({
         type="button"
         onClick={handleTap}
         aria-label="Tap to advance"
-        className="flex min-h-0 flex-1 cursor-pointer flex-col items-center justify-between gap-4 overflow-y-auto px-5 py-6 text-center focus:outline-none"
+        className="flex min-h-0 flex-1 cursor-pointer flex-col items-stretch gap-4 overflow-y-auto px-4 py-4 text-center focus:outline-none sm:px-5 sm:py-5"
       >
-        <div className="flex w-full max-w-5xl flex-col gap-3">
+        {/* Conceptos primero — móvil vertical y PC */}
+        <div className="flex w-full shrink-0 flex-col gap-3 sm:gap-4">
           <WordSlot
             label={tr('concept01')}
             word={word1}
@@ -112,12 +113,18 @@ export function LaunchScreen({
           />
         </div>
 
-        <div className="flex flex-col items-center gap-5">
-          <PixelDice mode={diceMode} value={landed} size={190} />
-          <p className="font-pixel neon-text min-h-[2.5rem] text-sm leading-relaxed text-balance sm:text-base lg:text-xl">
-            {prompts[step]}
-            {step < 3 && <span className="blink">_</span>}
-          </p>
+        <p className="font-pixel neon-text shrink-0 px-2 text-sm leading-relaxed text-balance sm:text-base lg:text-lg">
+          {prompts[step]}
+          {step < 3 && <span className="blink">_</span>}
+        </p>
+
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 py-2">
+          <div className="sm:hidden">
+            <PixelDice mode={diceMode} value={landed} size={150} />
+          </div>
+          <div className="hidden sm:block">
+            <PixelDice mode={diceMode} value={landed} size={190} />
+          </div>
         </div>
 
         {lowWords ? (
@@ -162,24 +169,25 @@ function WordSlot({
   revealed: boolean
 }) {
   return (
-    <div className="flex items-center gap-4 border-2 border-border bg-card/50 px-4 py-4 text-left sm:px-6 lg:py-6">
-      <span className="shrink-0 font-sans text-lg text-muted-foreground lg:text-2xl">
+    <div className="flex w-full max-w-6xl flex-col gap-2 border-2 border-border bg-card/50 px-4 py-4 text-left sm:gap-3 sm:px-6 sm:py-5 lg:py-6">
+      <span className="shrink-0 font-sans text-sm tracking-widest text-muted-foreground sm:text-base lg:text-lg">
         {label}
       </span>
-      <span className="mx-1 h-8 w-px shrink-0 bg-border" />
-      {revealed ? (
-        <span
-          key={word}
-          className="font-pixel neon-text break-words text-2xl leading-relaxed sm:text-4xl lg:text-5xl"
-          style={{ animation: 'reveal-in 0.45s ease-out both' }}
-        >
-          {word}
-        </span>
-      ) : (
-        <span className="font-pixel text-2xl tracking-widest text-muted-foreground sm:text-4xl">
-          ▓▓▓▓▓▓
-        </span>
-      )}
+      <div className="min-h-[3.25rem] sm:min-h-[4rem] lg:min-h-[5rem]">
+        {revealed ? (
+          <span
+            key={word}
+            className="font-pixel neon-text block break-words text-[clamp(2rem,9vw,3.25rem)] leading-tight sm:text-[clamp(2.25rem,6vw,4rem)] lg:text-[clamp(2.75rem,4.5vw,5rem)]"
+            style={{ animation: 'reveal-in 0.45s ease-out both' }}
+          >
+            {word}
+          </span>
+        ) : (
+          <span className="font-pixel block text-[clamp(2rem,9vw,3.25rem)] tracking-widest text-muted-foreground sm:text-[clamp(2.25rem,6vw,4rem)] lg:text-[clamp(2.75rem,4.5vw,5rem)]">
+            ▓▓▓▓▓▓
+          </span>
+        )}
+      </div>
     </div>
   )
 }

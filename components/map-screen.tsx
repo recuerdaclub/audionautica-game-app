@@ -57,35 +57,37 @@ export function MapScreen({
       roomId={roomId}
       headerRight={<SoundToggle on={soundOn} onToggle={onToggleSound} />}
     >
-      <div className="flex h-full min-h-0 flex-1 flex-col lg:flex-row">
-        <div className="relative min-h-[38dvh] flex-1 border-b-2 border-border lg:min-h-0 lg:border-b-0 lg:border-r-2">
-          <UniverseMap
-            activeCircuit={journey.circuit}
-            circuitLabel={circuit?.short ?? journey.circuit}
-            word1={journey.word1}
-            word2={journey.word2}
-          />
+      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        {/* Conceptos arriba — móvil y PC */}
+        <div className="grid shrink-0 grid-cols-1 gap-2 border-b-2 border-border p-3 sm:grid-cols-2 sm:gap-3 sm:p-4 lg:gap-4 lg:p-5">
+          <ConceptCard label={tr('concept01')} word={journey.word1} priority />
+          <ConceptCard label={tr('concept02')} word={journey.word2} priority />
         </div>
 
-        <aside className="flex min-h-0 w-full shrink-0 flex-col gap-3 overflow-hidden p-4 sm:p-5 lg:h-full lg:w-1/2 lg:gap-4 lg:p-6">
-          <div className="shrink-0">
-            <p className="font-sans text-xl tracking-[0.18em] text-muted-foreground lg:text-2xl">
-              {tr('mapActive')}
-            </p>
-            <p className="font-pixel neon-text mt-1 text-[clamp(4.5rem,9vw,9.5rem)] leading-none">
-              {journey.circuit}
-            </p>
-            <p className="amber-text mt-2 font-pixel text-[clamp(1.15rem,2.1vw,2.35rem)] leading-snug text-balance">
-              {circuit?.short}
-            </p>
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <div className="relative min-h-[28dvh] flex-1 border-b-2 border-border lg:min-h-0 lg:border-b-0 lg:border-r-2">
+            <UniverseMap
+              activeCircuit={journey.circuit}
+              circuitLabel={circuit?.short ?? journey.circuit}
+              word1={journey.word1}
+              word2={journey.word2}
+            />
           </div>
 
-          <div className="grid h-full min-h-0 flex-1 grid-rows-2 gap-3">
-            <ConceptCard label={tr('concept01')} word={journey.word1} />
-            <ConceptCard label={tr('concept02')} word={journey.word2} />
-          </div>
+          <aside className="flex min-h-0 w-full shrink-0 flex-col gap-3 overflow-y-auto p-4 sm:p-5 lg:h-full lg:w-[min(42%,520px)] lg:gap-4 lg:p-6">
+            <div className="shrink-0">
+              <p className="font-sans text-base tracking-[0.18em] text-muted-foreground sm:text-xl lg:text-2xl">
+                {tr('mapActive')}
+              </p>
+              <p className="font-pixel neon-text mt-1 text-[clamp(3rem,12vw,5rem)] leading-none lg:text-[clamp(3.5rem,8vw,6rem)]">
+                {journey.circuit}
+              </p>
+              <p className="amber-text mt-2 font-pixel text-[clamp(1rem,3.5vw,1.75rem)] leading-snug text-balance lg:text-[clamp(1.15rem,2.1vw,2.35rem)]">
+                {circuit?.short}
+              </p>
+            </div>
 
-          {lowWords && (
+            {lowWords && (
             <div className="flex shrink-0 items-start gap-2 border-2 border-destructive bg-destructive/10 px-3 py-2">
               <AlertTriangle
                 className="mt-0.5 size-5 shrink-0 text-destructive"
@@ -139,23 +141,36 @@ export function MapScreen({
             </button>
           </div>
         </aside>
+        </div>
       </div>
     </ScreenFrame>
   )
 }
 
-function ConceptCard({ label, word }: { label: string; word: string }) {
+function ConceptCard({
+  label,
+  word,
+  priority = false,
+}: {
+  label: string
+  word: string
+  priority?: boolean
+}) {
   return (
-    <div className="flex h-full min-h-0 flex-col border-2 border-border bg-card/50 px-4 py-3 lg:px-5 lg:py-4">
-      <span className="shrink-0 font-sans text-lg tracking-widest text-muted-foreground lg:text-2xl">
+    <div
+      className={`flex min-h-0 flex-col border-2 border-border bg-card/50 px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4 ${
+        priority ? 'min-h-[5.5rem] sm:min-h-[6.5rem] lg:min-h-[7.5rem]' : 'h-full'
+      }`}
+    >
+      <span className="shrink-0 font-sans text-xs tracking-widest text-muted-foreground sm:text-sm lg:text-base">
         {label}
       </span>
-      <FitText text={word} />
+      <FitText text={word} large={priority} />
     </div>
   )
 }
 
-function FitText({ text }: { text: string }) {
+function FitText({ text, large = false }: { text: string; large?: boolean }) {
   const boxRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState(64)
 
@@ -184,8 +199,11 @@ function FitText({ text }: { text: string }) {
       probe.textContent = text
       box.appendChild(probe)
 
-      let lo = 36
-      let hi = Math.max(48, Math.min(width * 0.9, height * 0.92, 240))
+      let lo = large ? 28 : 36
+      let hi = Math.max(
+        large ? 40 : 48,
+        Math.min(width * 0.9, height * 0.92, large ? 320 : 240),
+      )
       while (hi - lo > 1) {
         const mid = (lo + hi) / 2
         probe.style.fontSize = `${mid}px`
