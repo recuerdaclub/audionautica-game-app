@@ -137,9 +137,12 @@ export function mergeBank(stored: string[], live: LiveState | null): string[] {
   return words
 }
 
-export function formatDate(ts: number): string {
+export function formatDate(
+  ts: number,
+  locale: 'es' | 'en' = 'es',
+): string {
   try {
-    return new Date(ts).toLocaleString('es', {
+    return new Date(ts).toLocaleString(locale === 'en' ? 'en-US' : 'es', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

@@ -1,5 +1,5 @@
-import { AudionauticaApp } from '@/components/audionautica-app'
+import { AppShell } from '@/components/app-shell'
 
 export default function Page() {
-  return <AudionauticaApp />
+  return <AppShell />
 }

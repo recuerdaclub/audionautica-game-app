@@ -3,15 +3,21 @@
 import { Trash2 } from 'lucide-react'
 import { ScreenFrame } from './screen-frame'
 import { SoundToggle } from './sound-toggle'
-import { circuitByCode } from '@/lib/circuits'
+import { circuitForLocale } from '@/lib/circuits-locale'
+import { useI18n } from '@/lib/i18n/context'
 import { formatDate, type Session } from '@/lib/storage'
 
-type HistoryScreenProps = {
+type FrameProps = {
+  soundOn: boolean
+  onToggleSound: () => void
+  pilotName: string
+  roomId: string
+}
+
+type HistoryScreenProps = FrameProps & {
   sessions: Session[]
   onBack: () => void
   onClear: () => void
-  soundOn: boolean
-  onToggleSound: () => void
 }
 
 export function HistoryScreen({
@@ -20,22 +26,27 @@ export function HistoryScreen({
   onClear,
   soundOn,
   onToggleSound,
+  pilotName,
+  roomId,
 }: HistoryScreenProps) {
+  const { locale, tr } = useI18n()
   const ordered = [...sessions].sort((a, b) => b.startedAt - a.startedAt)
   const totalJourneys = sessions.reduce((n, s) => n + s.journeys.length, 0)
 
   return (
     <ScreenFrame
-      title="AUDIONÁUTICA"
+      title={tr('appTitle')}
       statusLeft="SYS://registro-de-sesiones"
-      statusRight={`${sessions.length} SESIONES · ${totalJourneys} DADOS`}
+      statusRight={`${sessions.length} SES · ${totalJourneys}`}
       onTitleClick={onBack}
+      pilotName={pilotName}
+      roomId={roomId}
       headerRight={<SoundToggle on={soundOn} onToggle={onToggleSound} />}
     >
       <div className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto px-4 py-5 sm:px-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="font-pixel neon-text text-base sm:text-lg">
-            // BITÁCORA DE VIAJES
+            {tr('historyTitle')}
           </h2>
           {sessions.length > 0 && (
             <button
@@ -44,7 +55,7 @@ export function HistoryScreen({
               className="flex items-center gap-1.5 border-2 border-destructive px-2 py-1 font-sans text-base text-destructive transition-colors hover:bg-destructive/10"
             >
               <Trash2 className="size-4" aria-hidden="true" />
-              BORRAR TODO
+              {tr('historyClear')}
             </button>
           )}
         </div>
@@ -52,7 +63,8 @@ export function HistoryScreen({
         {ordered.length === 0 ? (
           <div className="flex flex-1 items-center justify-center border-2 border-border">
             <p className="font-sans text-lg text-muted-foreground">
-              {'>'} sin sesiones registradas<span className="blink">_</span>
+              {tr('historyEmpty')}
+              <span className="blink">_</span>
             </p>
           </div>
         ) : (
@@ -64,21 +76,21 @@ export function HistoryScreen({
               >
                 <header className="flex items-center justify-between gap-2 border-b-2 border-border px-3 py-2">
                   <span className="font-pixel neon-text text-[10px] sm:text-xs">
-                    PARTIDA #{ordered.length - si}
+                    {tr('historyGame', { n: ordered.length - si })}
                   </span>
                   <span className="font-sans text-base text-muted-foreground">
-                    {formatDate(session.startedAt)}
+                    {formatDate(session.startedAt, locale)}
                   </span>
                 </header>
 
                 {session.journeys.length === 0 ? (
                   <p className="px-3 py-3 font-sans text-base text-muted-foreground">
-                    (sin lanzamientos)
+                    {tr('historyNoRolls')}
                   </p>
                 ) : (
                   <ol className="divide-y divide-border">
                     {session.journeys.map((j, ji) => {
-                      const c = circuitByCode(j.circuit)
+                      const c = circuitForLocale(j.circuit, locale)
                       return (
                         <li
                           key={j.id}
@@ -114,7 +126,7 @@ export function HistoryScreen({
           onClick={onBack}
           className="mt-auto shrink-0 border-2 border-border px-5 py-3 font-sans text-lg text-foreground transition-colors hover:bg-accent"
         >
-          [ VOLVER ]
+          {tr('back')}
         </button>
       </div>
     </ScreenFrame>

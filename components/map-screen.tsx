@@ -5,10 +5,18 @@ import { AlertTriangle } from 'lucide-react'
 import { ScreenFrame } from './screen-frame'
 import { SoundToggle } from './sound-toggle'
 import { UniverseMap } from './universe-map'
-import { circuitByCode } from '@/lib/circuits'
+import { circuitForLocale } from '@/lib/circuits-locale'
+import { useI18n } from '@/lib/i18n/context'
 import type { Journey } from '@/lib/storage'
 
-type MapScreenProps = {
+type FrameProps = {
+  soundOn: boolean
+  onToggleSound: () => void
+  pilotName: string
+  roomId: string
+}
+
+type MapScreenProps = FrameProps & {
   journey: Journey
   roundNumber: number
   remaining: number
@@ -18,8 +26,6 @@ type MapScreenProps = {
   onAddWords: () => void
   onHome: () => void
   onLand: () => void
-  soundOn: boolean
-  onToggleSound: () => void
 }
 
 export function MapScreen({
@@ -34,16 +40,21 @@ export function MapScreen({
   onLand,
   soundOn,
   onToggleSound,
+  pilotName,
+  roomId,
 }: MapScreenProps) {
-  const circuit = circuitByCode(journey.circuit)
+  const { locale, tr } = useI18n()
+  const circuit = circuitForLocale(journey.circuit, locale)
   const [landArmed, setLandArmed] = useState(false)
 
   return (
     <ScreenFrame
-      title="AUDIONÁUTICA"
+      title={tr('appTitle')}
       statusLeft="SYS://mapa-universo-digital"
       statusRight={`RONDA ${roundNumber} · ${remaining} REST.`}
       onTitleClick={onHome}
+      pilotName={pilotName}
+      roomId={roomId}
       headerRight={<SoundToggle on={soundOn} onToggle={onToggleSound} />}
     >
       <div className="flex h-full min-h-0 flex-1 flex-col lg:flex-row">
@@ -59,7 +70,7 @@ export function MapScreen({
         <aside className="flex min-h-0 w-full shrink-0 flex-col gap-3 overflow-hidden p-4 sm:p-5 lg:h-full lg:w-1/2 lg:gap-4 lg:p-6">
           <div className="shrink-0">
             <p className="font-sans text-xl tracking-[0.18em] text-muted-foreground lg:text-2xl">
-              CIRCUITO ACTIVO
+              {tr('mapActive')}
             </p>
             <p className="font-pixel neon-text mt-1 text-[clamp(4.5rem,9vw,9.5rem)] leading-none">
               {journey.circuit}
@@ -70,8 +81,8 @@ export function MapScreen({
           </div>
 
           <div className="grid h-full min-h-0 flex-1 grid-rows-2 gap-3">
-            <ConceptCard label="CONCEPTO 01" word={journey.word1} />
-            <ConceptCard label="CONCEPTO 02" word={journey.word2} />
+            <ConceptCard label={tr('concept01')} word={journey.word1} />
+            <ConceptCard label={tr('concept02')} word={journey.word2} />
           </div>
 
           {lowWords && (
@@ -81,7 +92,7 @@ export function MapScreen({
                 aria-hidden="true"
               />
               <p className="font-sans text-lg text-destructive">
-                Quedan {remaining} conceptos en el núcleo.
+                {tr('mapLow', { n: remaining })}
               </p>
             </div>
           )}
@@ -93,7 +104,7 @@ export function MapScreen({
                 onClick={onAgain}
                 className="neon-glow flex-1 border-2 border-primary bg-primary/10 px-4 py-3 font-pixel text-xs text-primary transition-colors hover:bg-primary hover:text-primary-foreground lg:text-sm"
               >
-                {'>'} LANZAR DE NUEVO
+                {tr('mapAgain')}
               </button>
             ) : (
               <button
@@ -102,7 +113,7 @@ export function MapScreen({
                 className="neon-glow flex-1 border-2 border-amber bg-amber/10 px-4 py-3 font-pixel text-xs transition-colors lg:text-sm"
                 style={{ color: 'var(--amber)' }}
               >
-                {'>'} REINGRESAR CONCEPTOS
+                {tr('mapReenter')}
               </button>
             )}
             <button
@@ -110,7 +121,7 @@ export function MapScreen({
               onClick={onAddWords}
               className="border-2 border-border px-4 py-3 font-sans text-lg text-foreground transition-colors hover:bg-accent"
             >
-              [ AGREGAR ]
+              {tr('mapAdd')}
             </button>
             <button
               type="button"
@@ -124,7 +135,7 @@ export function MapScreen({
               className="border-2 border-amber px-4 py-3 font-sans text-lg transition-colors hover:bg-amber/10"
               style={{ color: 'var(--amber)' }}
             >
-              {landArmed ? '[ CONFIRMAR ]' : '[ ATERRIZAR ]'}
+              {landArmed ? tr('mapLandConfirm') : tr('mapLand')}
             </button>
           </div>
         </aside>

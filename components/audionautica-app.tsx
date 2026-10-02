@@ -1,24 +1,25 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { IntroScreen } from './intro-screen'
 import { SetupScreen } from './setup-screen'
 import { LaunchScreen } from './launch-screen'
 import { MapScreen } from './map-screen'
 import { HistoryScreen } from './history-screen'
 import { Sound } from '@/lib/sound'
+import { fetchRoom, pushRoom } from '@/lib/game-remote'
+import type { RoomSnapshot } from '@/lib/server/game-store'
 import {
   loadBank,
   loadLive,
   loadSessions,
-  loadSoundPref,
   mergeBank,
   saveBank,
   saveLive,
   saveSessions,
-  saveSoundPref,
   uid,
   type Journey,
+  type LiveState,
   type Session,
 } from '@/lib/storage'
 
@@ -26,7 +27,19 @@ type Screen = 'intro' | 'setup' | 'launch' | 'map' | 'history'
 
 const LOW_WORDS_THRESHOLD = 4
 
-export function AudionauticaApp() {
+type AudionauticaAppProps = {
+  username: string
+  roomId: string
+  soundOn: boolean
+  onToggleSound: () => void
+}
+
+export function AudionauticaApp({
+  username,
+  roomId,
+  soundOn,
+  onToggleSound,
+}: AudionauticaAppProps) {
   const [screen, setScreen] = useState<Screen>('intro')
   const [setupMode, setSetupMode] = useState<'new' | 'add'>('new')
   const [pool, setPool] = useState<string[]>([])
@@ -37,16 +50,53 @@ export function AudionauticaApp() {
     null,
   )
   const [lastJourney, setLastJourney] = useState<Journey | null>(null)
-  const [soundOn, setSoundOn] = useState(true)
   const [loaded, setLoaded] = useState(false)
+  const [revision, setRevision] = useState(0)
+  const revisionRef = useRef(0)
+  const applyingRemote = useRef(false)
 
-  // cargar estado persistido. Si el navegador recarga, se retoma
-  // la misma pantalla, conceptos y circuito.
+  const applySnapshot = useCallback((snap: RoomSnapshot) => {
+    applyingRemote.current = true
+    revisionRef.current = snap.revision
+    setRevision(snap.revision)
+    if (snap.live) {
+      setScreen(snap.live.screen)
+      setSetupMode(snap.live.setupMode)
+      setPool(snap.live.pool)
+      setCurrentSession(snap.live.currentSession)
+      setRound(snap.live.round)
+      setLastJourney(snap.live.lastJourney)
+    }
+    setBank(snap.bank)
+    setSessions(snap.sessions)
+    saveBank(snap.bank)
+    saveSessions(snap.sessions)
+    if (snap.live) saveLive(snap.live)
+    queueMicrotask(() => {
+      applyingRemote.current = false
+    })
+  }, [])
+
+  const currentLive = useMemo(
+    (): LiveState => ({
+      screen,
+      setupMode,
+      pool,
+      currentSession,
+      round,
+      lastJourney,
+    }),
+    [screen, setupMode, pool, currentSession, round, lastJourney],
+  )
+
+  useEffect(() => {
+    revisionRef.current = revision
+  }, [revision])
+
   useEffect(() => {
     const live = loadLive()
     const remembered = mergeBank(loadBank(), live)
     setSessions(loadSessions())
-    setSoundOn(loadSoundPref())
     setBank(remembered)
     saveBank(remembered)
     if (live) {
@@ -57,23 +107,71 @@ export function AudionauticaApp() {
       setRound(live.round)
       setLastJourney(live.lastJourney)
     }
-    setLoaded(true)
-  }, [])
+
+    fetchRoom(roomId).then((remote) => {
+      if (!remote) {
+        setLoaded(true)
+        return
+      }
+      if (remote.revision > 0) {
+        applySnapshot(remote)
+      } else if (live || remembered.length > 0) {
+        void pushRoom(roomId, 0, {
+          live,
+          bank: remembered,
+          sessions: loadSessions(),
+        }).then((created) => {
+          if (created) {
+            revisionRef.current = created.revision
+            setRevision(created.revision)
+          }
+        })
+      }
+      setLoaded(true)
+    })
+  }, [roomId, applySnapshot])
+
+  useEffect(() => {
+    if (!loaded || applyingRemote.current) return
+    saveLive(currentLive)
+    saveBank(bank)
+  }, [loaded, currentLive, bank])
+
+  useEffect(() => {
+    if (!loaded || applyingRemote.current) return
+    const handle = window.setTimeout(() => {
+      void pushRoom(roomId, revisionRef.current, {
+        live: currentLive,
+        bank,
+        sessions,
+      }).then((next) => {
+        if (!next) return
+        if (next.revision !== revisionRef.current) {
+          revisionRef.current = next.revision
+          setRevision(next.revision)
+        }
+      })
+    }, 350)
+    return () => window.clearTimeout(handle)
+  }, [loaded, roomId, currentLive, bank, sessions])
 
   useEffect(() => {
     if (!loaded) return
-    saveLive({
-      screen,
-      setupMode,
-      pool,
-      currentSession,
-      round,
-      lastJourney,
-    })
-    saveBank(bank)
-  }, [loaded, screen, setupMode, pool, currentSession, round, lastJourney, bank])
+    let cancelled = false
+    const poll = window.setInterval(() => {
+      void fetchRoom(roomId).then((remote) => {
+        if (cancelled || !remote) return
+        if (remote.revision > revisionRef.current) {
+          applySnapshot(remote)
+        }
+      })
+    }, 2000)
+    return () => {
+      cancelled = true
+      window.clearInterval(poll)
+    }
+  }, [loaded, roomId, applySnapshot])
 
-  // helpers de sonido respetando la preferencia
   const s = useMemo(() => {
     const guard =
       (fn: () => void) =>
@@ -92,50 +190,32 @@ export function AudionauticaApp() {
     }
   }, [soundOn])
 
-  const toggleSound = useCallback(() => {
-    Sound.unlock()
-    setSoundOn((prev) => {
-      const next = !prev
-      saveSoundPref(next)
-      if (next) Sound.confirm()
-      return next
-    })
-  }, [])
-
   const remaining = pool.length
   const lowWords = remaining > 0 && remaining <= LOW_WORDS_THRESHOLD
   const canContinue = remaining >= 2
 
-  // Deduplicar (case-insensitive)
-  const addWord = useCallback(
-    (word: string) => {
-      const clean = word.trim().replace(/\s+/g, ' ')
-      if (!clean) return false
-      let added = false
-      setPool((prev) => {
-        const exists = prev.some(
-          (w) => w.toLowerCase() === clean.toLowerCase(),
-        )
-        if (exists) return prev
-        added = true
-        return [...prev, clean]
-      })
-      setBank((prev) => {
-        const exists = prev.some(
-          (w) => w.toLowerCase() === clean.toLowerCase(),
-        )
-        if (exists) return prev
-        return [...prev, clean]
-      })
-      return added
-    },
-    [],
-  )
+  const addWord = useCallback((word: string) => {
+    const clean = word.trim().replace(/\s+/g, ' ')
+    if (!clean) return false
+    let added = false
+    setPool((prev) => {
+      const exists = prev.some(
+        (w) => w.toLowerCase() === clean.toLowerCase(),
+      )
+      if (exists) return prev
+      added = true
+      return [...prev, clean]
+    })
+    setBank((prev) => {
+      const exists = prev.some(
+        (w) => w.toLowerCase() === clean.toLowerCase(),
+      )
+      if (exists) return prev
+      return [...prev, clean]
+    })
+    return added
+  }, [])
 
-  // Selecciona 2 conceptos al azar y los saca del núcleo.
-  // La selección se calcula con el valor actual de `pool` y se guarda
-  // con un array plano (no un updater que re-randomiza), de modo que
-  // la doble invocación de React StrictMode sea idempotente.
   const startRound = useCallback(() => {
     if (pool.length < 2) return false
     const idx = new Set<number>()
@@ -197,7 +277,6 @@ export function AudionauticaApp() {
     }
   }, [s, setupMode, lastJourney])
 
-  // Registrar el viaje al aterrizar el dado
   const onLaunchComplete = useCallback(
     (circuit: string) => {
       if (!round) return
@@ -249,6 +328,12 @@ export function AudionauticaApp() {
   }, [s])
 
   const roundNumber = currentSession?.journeys.length ?? 0
+  const frameExtras = {
+    pilotName: username,
+    roomId,
+    soundOn,
+    onToggleSound,
+  }
 
   if (!loaded) {
     return <div className="h-dvh bg-background" />
@@ -265,8 +350,8 @@ export function AudionauticaApp() {
         hasHistory={sessions.length > 0}
         savedConcepts={bank.length}
         onLand={landAndFinish}
-        soundOn={soundOn}
-        onToggleSound={toggleSound}
+        syncRevision={revision}
+        {...frameExtras}
       />
     )
   }
@@ -279,11 +364,10 @@ export function AudionauticaApp() {
         onStart={onSetupStart}
         onBack={onSetupBack}
         mode={setupMode}
-        soundOn={soundOn}
-        onToggleSound={toggleSound}
         playKey={s.key}
         playConfirm={s.confirm}
         playWarn={s.warn}
+        {...frameExtras}
       />
     )
   }
@@ -298,11 +382,10 @@ export function AudionauticaApp() {
         onComplete={onLaunchComplete}
         onAddWords={openAddWords}
         onHome={goHome}
-        soundOn={soundOn}
-        onToggleSound={toggleSound}
         playReveal={s.reveal}
         playDiceRoll={s.diceRoll}
         playDiceLand={s.diceLand}
+        {...frameExtras}
       />
     )
   }
@@ -319,8 +402,7 @@ export function AudionauticaApp() {
         onAddWords={openAddWords}
         onHome={goHome}
         onLand={landAndFinish}
-        soundOn={soundOn}
-        onToggleSound={toggleSound}
+        {...frameExtras}
       />
     )
   }
@@ -331,13 +413,11 @@ export function AudionauticaApp() {
         sessions={sessions}
         onBack={goHome}
         onClear={clearHistory}
-        soundOn={soundOn}
-        onToggleSound={toggleSound}
+        {...frameExtras}
       />
     )
   }
 
-  // fallback
   return (
     <IntroScreen
       onNewGame={newGame}
@@ -345,8 +425,8 @@ export function AudionauticaApp() {
       hasHistory={sessions.length > 0}
       savedConcepts={bank.length}
       onLand={landAndFinish}
-      soundOn={soundOn}
-      onToggleSound={toggleSound}
+      syncRevision={revision}
+      {...frameExtras}
     />
   )
 }

@@ -3,15 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ScreenFrame } from './screen-frame'
 import { SoundToggle } from './sound-toggle'
-
-const BOOT_LINES = [
-  'AUDIONAUTICA BIOS v8.0 ...... OK',
-  'CARGANDO NUCLEO DE CONCIENCIA .. OK',
-  'MAPEANDO 8 CIRCUITOS .......... OK',
-  'CALIBRANDO DADO CUANTICO ...... OK',
-  'ENLACE NEURONAL ............... OK',
-  'SISTEMA LISTO.',
-]
+import { useI18n } from '@/lib/i18n/context'
 
 type IntroScreenProps = {
   onNewGame: () => void
@@ -19,8 +11,11 @@ type IntroScreenProps = {
   hasHistory: boolean
   savedConcepts: number
   onLand: () => void
+  syncRevision: number
   soundOn: boolean
   onToggleSound: () => void
+  pilotName: string
+  roomId: string
 }
 
 export function IntroScreen({
@@ -29,47 +24,55 @@ export function IntroScreen({
   hasHistory,
   savedConcepts,
   onLand,
+  syncRevision,
   soundOn,
   onToggleSound,
+  pilotName,
+  roomId,
 }: IntroScreenProps) {
+  const { tr, boots } = useI18n()
   const [lines, setLines] = useState<number>(0)
   const [landArmed, setLandArmed] = useState(false)
 
   useEffect(() => {
-    if (lines >= BOOT_LINES.length) return
+    if (lines >= boots.length) return
     const t = setTimeout(() => setLines((n) => n + 1), 260)
     return () => clearTimeout(t)
-  }, [lines])
+  }, [lines, boots.length])
 
-  const booted = lines >= BOOT_LINES.length
+  const booted = lines >= boots.length
+  const readyLabel = tr('boot5')
 
   return (
     <ScreenFrame
-      title="AUDIONÁUTICA"
+      title={tr('appTitle')}
       statusLeft="SYS://boot"
-      statusRight={booted ? 'READY' : 'BOOTING...'}
+      statusRight={
+        booted
+          ? `${tr('statusReady')} · ${tr('syncLive', { n: syncRevision })}`
+          : tr('statusBooting')
+      }
+      pilotName={pilotName}
+      roomId={roomId}
       headerRight={<SoundToggle on={soundOn} onToggle={onToggleSound} />}
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-5 py-8">
         <div className="w-full max-w-xl">
           <h1 className="font-pixel neon-text flicker text-center text-2xl leading-relaxed text-balance sm:text-4xl">
-            AUDIONÁUTICA
+            {tr('appTitle')}
           </h1>
           <p className="mt-3 text-center text-lg text-muted-foreground text-pretty">
-            {'>'} consola de navegación por los 8 circuitos de conciencia
+            {tr('tagline')}
           </p>
         </div>
 
-        {/* Boot log */}
         <div className="w-full max-w-md border-2 border-border bg-card/60 p-3 font-sans text-base">
-          {BOOT_LINES.slice(0, lines).map((l, i) => (
+          {boots.slice(0, lines).map((l, i) => (
             <div key={i} className="flex gap-2">
               <span className="text-primary">{'>'}</span>
               <span
                 className={
-                  l === 'SISTEMA LISTO.'
-                    ? 'amber-text'
-                    : 'text-foreground/90'
+                  l === readyLabel ? 'amber-text' : 'text-foreground/90'
                 }
               >
                 {l}
@@ -79,7 +82,6 @@ export function IntroScreen({
           {!booted && <span className="blink text-primary">█</span>}
         </div>
 
-        {/* Actions */}
         <div
           className={`flex w-full max-w-md flex-col gap-3 transition-opacity duration-500 ${
             booted ? 'opacity-100' : 'pointer-events-none opacity-30'
@@ -91,12 +93,12 @@ export function IntroScreen({
             className="neon-glow group w-full border-2 border-primary bg-primary/10 px-5 py-4 font-pixel text-sm text-primary transition-colors hover:bg-primary hover:text-primary-foreground sm:text-base"
           >
             {savedConcepts > 0
-              ? `> SEGUIR · ${savedConcepts} CONCEPTOS GUARDADOS`
-              : '> INICIAR NUEVA PARTIDA'}
+              ? tr('continueSaved', { n: savedConcepts })
+              : tr('startNew')}
           </button>
           {savedConcepts > 0 && (
             <p className="text-center font-sans text-base text-muted-foreground">
-              Siguen en este computador si se reinicia la página.
+              {tr('savedHint')}
             </p>
           )}
           <button
@@ -105,9 +107,11 @@ export function IntroScreen({
             disabled={!hasHistory}
             className="w-full border-2 border-border px-5 py-3 font-sans text-lg text-foreground transition-colors hover:enabled:bg-accent disabled:opacity-40"
           >
-            [ REGISTRO DE SESIONES ]{' '}
+            {tr('sessionLog')}{' '}
             {!hasHistory && (
-              <span className="text-sm text-muted-foreground">// vacío</span>
+              <span className="text-sm text-muted-foreground">
+                {tr('sessionEmpty')}
+              </span>
             )}
           </button>
           {savedConcepts > 0 && (
@@ -123,9 +127,7 @@ export function IntroScreen({
               className="w-full border-2 border-amber px-5 py-3 font-sans text-lg transition-colors hover:bg-amber/10"
               style={{ color: 'var(--amber)' }}
             >
-              {landArmed
-                ? '[ CONFIRMAR ATERRIZAJE ]'
-                : '[ ATERRIZAR Y FINALIZAR ]'}
+              {landArmed ? tr('landConfirm') : tr('landArm')}
             </button>
           )}
         </div>

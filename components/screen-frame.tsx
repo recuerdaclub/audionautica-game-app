@@ -3,14 +3,18 @@
 import type { ReactNode } from 'react'
 import { FullscreenButton } from './fullscreen-button'
 import { KioskGuard } from './kiosk-guard'
+import { LocaleToggle } from './locale-toggle'
 
 type ScreenFrameProps = {
   title: string
   statusLeft?: string
   statusRight?: string
+  pilotName?: string
+  roomId?: string
   children: ReactNode
   onTitleClick?: () => void
   headerRight?: ReactNode
+  showLocaleToggle?: boolean
 }
 
 export function ScreenFrame({
@@ -20,6 +24,9 @@ export function ScreenFrame({
   children,
   onTitleClick,
   headerRight,
+  pilotName,
+  roomId,
+  showLocaleToggle = true,
 }: ScreenFrameProps) {
   return (
     <div className="crt-scanlines crt-vignette pixel-grid relative flex h-dvh max-h-dvh w-full flex-col overflow-hidden bg-background">
@@ -34,7 +41,14 @@ export function ScreenFrame({
           {title}
         </button>
         <div className="flex items-center gap-2">
+          {pilotName && (
+            <span className="hidden max-w-[8rem] truncate font-sans text-[10px] text-muted-foreground sm:inline">
+              {pilotName}
+              {roomId ? ` · ${roomId}` : ''}
+            </span>
+          )}
           <FullscreenButton />
+          {showLocaleToggle && <LocaleToggle />}
           {headerRight}
         </div>
       </header>
