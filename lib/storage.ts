@@ -1,10 +1,18 @@
 // Persistencia local (localStorage) del registro de sesiones de juego.
 
+import {
+  migrateConcept,
+  migrateConceptList,
+  type ConceptEntry,
+} from '@/lib/concepts'
+
+export type { ConceptEntry } from '@/lib/concepts'
+
 export type Journey = {
   id: string
   at: number
-  word1: string
-  word2: string
+  word1: ConceptEntry
+  word2: ConceptEntry
   circuit: string // C1..C8
 }
 
@@ -26,9 +34,9 @@ export type LiveScreen = (typeof SCREENS)[number]
 export type LiveState = {
   screen: LiveScreen
   setupMode: 'new' | 'add'
-  pool: string[]
+  pool: ConceptEntry[]
   currentSession: Session | null
-  round: { word1: string; word2: string } | null
+  round: { word1: ConceptEntry; word2: ConceptEntry } | null
   lastJourney: Journey | null
 }
 
@@ -42,7 +50,18 @@ export function loadSessions(): Session[] {
     const raw = window.localStorage.getItem(SESSIONS_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as Session[]
-    return Array.isArray(parsed) ? parsed : []
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((session) => ({
+      ...session,
+      journeys: (session.journeys ?? [])
+        .map((j) => {
+          const w1 = migrateConcept(j.word1)
+          const w2 = migrateConcept(j.word2)
+          if (!w1 || !w2) return null
+          return { ...j, word1: w1, word2: w2 }
+        })
+        .filter((j): j is Journey => j != null),
+    }))
   } catch {
     return []
   }
@@ -76,6 +95,29 @@ export function loadLive(): LiveState | null {
     const parsed = JSON.parse(raw) as LiveState
     if (!parsed || !SCREENS.includes(parsed.screen)) return null
     if (!Array.isArray(parsed.pool)) return null
+    parsed.pool = migrateConceptList(parsed.pool)
+    if (parsed.round) {
+      const w1 = migrateConcept(parsed.round.word1)
+      const w2 = migrateConcept(parsed.round.word2)
+      if (!w1 || !w2) parsed.round = null
+      else parsed.round = { word1: w1, word2: w2 }
+    }
+    if (parsed.lastJourney) {
+      const w1 = migrateConcept(parsed.lastJourney.word1)
+      const w2 = migrateConcept(parsed.lastJourney.word2)
+      if (!w1 || !w2) parsed.lastJourney = null
+      else parsed.lastJourney = { ...parsed.lastJourney, word1: w1, word2: w2 }
+    }
+    if (parsed.currentSession?.journeys) {
+      parsed.currentSession.journeys = parsed.currentSession.journeys
+        .map((j) => {
+          const w1 = migrateConcept(j.word1)
+          const w2 = migrateConcept(j.word2)
+          if (!w1 || !w2) return null
+          return { ...j, word1: w1, word2: w2 }
+        })
+        .filter((j): j is Journey => j != null)
+    }
     if (parsed.setupMode !== 'new' && parsed.setupMode !== 'add') return null
     return parsed
   } catch {
@@ -92,20 +134,19 @@ export function saveLive(state: LiveState) {
   }
 }
 
-export function loadBank(): string[] {
+export function loadBank(): ConceptEntry[] {
   if (typeof window === 'undefined') return []
   try {
     const raw = window.localStorage.getItem(BANK_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((w): w is string => typeof w === 'string' && w.trim().length > 0)
+    return migrateConceptList(parsed)
   } catch {
     return []
   }
 }
 
-export function saveBank(words: string[]) {
+export function saveBank(words: ConceptEntry[]) {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(BANK_KEY, JSON.stringify(words))
@@ -114,15 +155,18 @@ export function saveBank(words: string[]) {
   }
 }
 
-function remember(list: string[], word: string | null | undefined) {
-  const clean = word?.trim()
-  if (!clean) return
-  if (list.some((w) => w.toLowerCase() === clean.toLowerCase())) return
-  list.push(clean)
+function remember(list: ConceptEntry[], word: ConceptEntry | null | undefined) {
+  if (!word) return
+  const exists = list.some(
+    (c) =>
+      c.es.toLowerCase() === word.es.toLowerCase() ||
+      c.en.toLowerCase() === word.en.toLowerCase(),
+  )
+  if (!exists) list.push(word)
 }
 
 /** Lista completa de conceptos de este viaje, aunque ya se hayan lanzado. */
-export function mergeBank(stored: string[], live: LiveState | null): string[] {
+export function mergeBank(stored: ConceptEntry[], live: LiveState | null): ConceptEntry[] {
   const words = [...stored]
   if (!live) return words
   for (const word of live.pool) remember(words, word)

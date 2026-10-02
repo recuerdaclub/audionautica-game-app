@@ -5,7 +5,9 @@ import { ScreenFrame } from './screen-frame'
 import { SoundToggle } from './sound-toggle'
 import { circuitForLocale } from '@/lib/circuits-locale'
 import { useI18n } from '@/lib/i18n/context'
+import type { ConceptEntry } from '@/lib/concepts'
 import { formatDate, type Session } from '@/lib/storage'
+import { useConceptDisplay } from './use-concept-display'
 
 type FrameProps = {
   soundOn: boolean
@@ -101,11 +103,11 @@ export function HistoryScreen({
                           </span>
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-sans text-lg text-foreground">
-                              <span className="text-primary">{j.word1}</span>
+                              <HistoryConcept word={j.word1} />
                               <span className="mx-2 text-muted-foreground">
                                 ×
                               </span>
-                              <span className="text-primary">{j.word2}</span>
+                              <HistoryConcept word={j.word2} />
                             </p>
                             <p className="truncate font-sans text-sm text-muted-foreground">
                               #{ji + 1} · {c?.short}
@@ -131,4 +133,9 @@ export function HistoryScreen({
       </div>
     </ScreenFrame>
   )
+}
+
+function HistoryConcept({ word }: { word: ConceptEntry }) {
+  const text = useConceptDisplay(word)
+  return <span className="text-primary">{text}</span>
 }

@@ -8,7 +8,8 @@ const messages = {
     tagline: '> consola de navegación por los 8 circuitos de conciencia',
     loginTitle: '// IDENTIFICACIÓN DE AUDIONAUTA',
     loginHint:
-      'Elige un nombre para esta consola. Se guarda en cookies para la próxima visita.',
+      'Elige un nombre para esta consola. Se guarda en cookies para la próxima visita. Si no eliges idioma, se sugiere español o inglés según tu conexión.',
+    loginLangLabel: 'Idioma de la consola',
     loginPlaceholder: 'tu nombre...',
     loginSubmit: '> ENTRAR A LA CONSOLA',
     loginRoomLabel: 'Sala compartida (opcional)',
@@ -78,7 +79,8 @@ const messages = {
     tagline: '> navigation console across the 8 consciousness circuits',
     loginTitle: '// AUDIONAUT IDENTIFICATION',
     loginHint:
-      'Pick a display name for this console. It is stored in a cookie for your next visit.',
+      'Pick a display name for this console. It is stored in a cookie for your next visit. If you do not choose a language, English or Spanish is suggested from your connection.',
+    loginLangLabel: 'Console language',
     loginPlaceholder: 'your name...',
     loginSubmit: '> ENTER CONSOLE',
     loginRoomLabel: 'Shared room (optional)',

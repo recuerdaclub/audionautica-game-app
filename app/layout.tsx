@@ -20,6 +20,10 @@ export const metadata: Metadata = {
   description:
     'Consola de navegación para audionautas. Lanza conceptos al azar por los 8 circuitos de conciencia.',
   generator: 'v0.app',
+  icons: {
+    icon: '/audionautica-mark-mask.png',
+    apple: '/audionautica-mark-mask.png',
+  },
 }
 
 export const viewport: Viewport = {

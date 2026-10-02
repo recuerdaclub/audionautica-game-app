@@ -7,7 +7,16 @@ import { LaunchScreen } from './launch-screen'
 import { MapScreen } from './map-screen'
 import { HistoryScreen } from './history-screen'
 import { Sound } from '@/lib/sound'
+import { useI18n } from '@/lib/i18n/context'
 import { fetchRoom, pushRoom } from '@/lib/game-remote'
+import type { AppLocale } from '@/lib/cookies'
+import {
+  bilingualize,
+  migrateConcept,
+  migrateConceptList,
+  poolHasText,
+  type ConceptEntry,
+} from '@/lib/concepts'
 import type { RoomSnapshot } from '@/lib/server/game-store'
 import {
   loadBank,
@@ -40,15 +49,17 @@ export function AudionauticaApp({
   soundOn,
   onToggleSound,
 }: AudionauticaAppProps) {
+  const { locale } = useI18n()
   const [screen, setScreen] = useState<Screen>('intro')
   const [setupMode, setSetupMode] = useState<'new' | 'add'>('new')
-  const [pool, setPool] = useState<string[]>([])
-  const [bank, setBank] = useState<string[]>([])
+  const [pool, setPool] = useState<ConceptEntry[]>([])
+  const [bank, setBank] = useState<ConceptEntry[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [currentSession, setCurrentSession] = useState<Session | null>(null)
-  const [round, setRound] = useState<{ word1: string; word2: string } | null>(
-    null,
-  )
+  const [round, setRound] = useState<{
+    word1: ConceptEntry
+    word2: ConceptEntry
+  } | null>(null)
   const [lastJourney, setLastJourney] = useState<Journey | null>(null)
   const [loaded, setLoaded] = useState(false)
   const [revision, setRevision] = useState(0)
@@ -59,19 +70,53 @@ export function AudionauticaApp({
     applyingRemote.current = true
     revisionRef.current = snap.revision
     setRevision(snap.revision)
-    if (snap.live) {
-      setScreen(snap.live.screen)
-      setSetupMode(snap.live.setupMode)
-      setPool(snap.live.pool)
-      setCurrentSession(snap.live.currentSession)
-      setRound(snap.live.round)
-      setLastJourney(snap.live.lastJourney)
+    const live = snap.live
+      ? {
+          ...snap.live,
+          pool: migrateConceptList(snap.live.pool),
+          round: snap.live.round
+            ? (() => {
+                const w1 = migrateConcept(snap.live!.round!.word1)
+                const w2 = migrateConcept(snap.live!.round!.word2)
+                return w1 && w2 ? { word1: w1, word2: w2 } : null
+              })()
+            : null,
+          lastJourney: snap.live.lastJourney
+            ? (() => {
+                const j = snap.live!.lastJourney!
+                const w1 = migrateConcept(j.word1)
+                const w2 = migrateConcept(j.word2)
+                return w1 && w2 ? { ...j, word1: w1, word2: w2 } : null
+              })()
+            : null,
+          currentSession: snap.live.currentSession
+            ? {
+                ...snap.live.currentSession,
+                journeys: snap.live.currentSession.journeys
+                  .map((j) => {
+                    const w1 = migrateConcept(j.word1)
+                    const w2 = migrateConcept(j.word2)
+                    if (!w1 || !w2) return null
+                    return { ...j, word1: w1, word2: w2 }
+                  })
+                  .filter((j): j is Journey => j != null),
+              }
+            : null,
+        }
+      : null
+    if (live) {
+      setScreen(live.screen)
+      setSetupMode(live.setupMode)
+      setPool(live.pool)
+      setCurrentSession(live.currentSession)
+      setRound(live.round)
+      setLastJourney(live.lastJourney)
     }
-    setBank(snap.bank)
+    setBank(migrateConceptList(snap.bank))
     setSessions(snap.sessions)
-    saveBank(snap.bank)
+    saveBank(migrateConceptList(snap.bank))
     saveSessions(snap.sessions)
-    if (snap.live) saveLive(snap.live)
+    if (live) saveLive(live)
     queueMicrotask(() => {
       applyingRemote.current = false
     })
@@ -194,27 +239,43 @@ export function AudionauticaApp({
   const lowWords = remaining > 0 && remaining <= LOW_WORDS_THRESHOLD
   const canContinue = remaining >= 2
 
-  const addWord = useCallback((word: string) => {
-    const clean = word.trim().replace(/\s+/g, ' ')
-    if (!clean) return false
-    let added = false
-    setPool((prev) => {
-      const exists = prev.some(
-        (w) => w.toLowerCase() === clean.toLowerCase(),
-      )
-      if (exists) return prev
-      added = true
-      return [...prev, clean]
-    })
-    setBank((prev) => {
-      const exists = prev.some(
-        (w) => w.toLowerCase() === clean.toLowerCase(),
-      )
-      if (exists) return prev
-      return [...prev, clean]
-    })
-    return added
-  }, [])
+  const addWord = useCallback(
+    async (word: string, sourceLocale: AppLocale) => {
+      const clean = word.trim().replace(/\s+/g, ' ')
+      if (!clean) return false
+
+      let duplicate = false
+      setPool((prev) => {
+        if (poolHasText(prev, clean)) duplicate = true
+        return prev
+      })
+      if (duplicate) return false
+
+      const entry = await bilingualize(clean, sourceLocale)
+      let added = false
+      setPool((prev) => {
+        if (poolHasText(prev, clean)) return prev
+        added = true
+        return [...prev, entry]
+      })
+      if (!added) return false
+      setBank((prev) => {
+        if (
+          prev.some(
+            (c) =>
+              c.id === entry.id ||
+              c.es.toLowerCase() === entry.es.toLowerCase() ||
+              c.en.toLowerCase() === entry.en.toLowerCase(),
+          )
+        ) {
+          return prev
+        }
+        return [...prev, entry]
+      })
+      return true
+    },
+    [],
+  )
 
   const startRound = useCallback(() => {
     if (pool.length < 2) return false
@@ -360,7 +421,7 @@ export function AudionauticaApp({
     return (
       <SetupScreen
         pool={pool}
-        onAdd={addWord}
+        onAdd={(word) => addWord(word, locale)}
         onStart={onSetupStart}
         onBack={onSetupBack}
         mode={setupMode}

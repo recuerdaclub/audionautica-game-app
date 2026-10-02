@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { ScreenFrame } from './screen-frame'
 import { SoundToggle } from './sound-toggle'
 import { useI18n } from '@/lib/i18n/context'
+import type { ConceptEntry } from '@/lib/concepts'
 
 type FrameProps = {
   soundOn: boolean
@@ -13,8 +14,8 @@ type FrameProps = {
 }
 
 type SetupScreenProps = FrameProps & {
-  pool: string[]
-  onAdd: (word: string) => boolean
+  pool: ConceptEntry[]
+  onAdd: (word: string) => Promise<boolean>
   onStart: () => void
   onBack: () => void
   mode: 'new' | 'add'
@@ -41,16 +42,19 @@ export function SetupScreen({
   const [value, setValue] = useState('')
   const [status, setStatus] = useState<string>('')
   const [addedThisSession, setAddedThisSession] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const count = pool.length
   const canStart = count >= 2
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault()
     const raw = value.trim()
-    if (!raw) return
-    const ok = onAdd(raw)
+    if (!raw || submitting) return
+    setSubmitting(true)
+    const ok = await onAdd(raw)
+    setSubmitting(false)
     if (ok) {
       setStatus(
         tr('setupRegistered', { n: (count + 1).toString().padStart(3, '0') }),
@@ -109,9 +113,10 @@ export function SetupScreen({
             </div>
             <button
               type="submit"
-              className="neon-glow shrink-0 border-2 border-primary bg-primary/10 px-4 font-pixel text-xs text-primary transition-colors hover:bg-primary hover:text-primary-foreground"
+              disabled={submitting}
+              className="neon-glow shrink-0 border-2 border-primary bg-primary/10 px-4 font-pixel text-xs text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:opacity-50"
             >
-              {tr('setupAdd')}
+              {submitting ? '…' : tr('setupAdd')}
             </button>
           </div>
           <p

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { ScreenFrame } from './screen-frame'
 import { LocaleToggle } from './locale-toggle'
 import { SoundToggle } from './sound-toggle'
+import { AudionauticaLogoMark } from './audionautica-logo'
 import { saveRoomCookie, saveUsername } from '@/lib/cookies'
 import { useI18n } from '@/lib/i18n/context'
 import { Sound } from '@/lib/sound'
@@ -54,7 +55,8 @@ export function LoginScreen({
       }
     >
       <div className="mx-auto flex min-h-0 w-full max-w-lg flex-1 flex-col justify-center gap-6 px-5 py-8">
-        <div>
+        <div className="flex flex-col items-center text-center">
+          <AudionauticaLogoMark size="lg" className="mb-4" />
           <h1 className="font-pixel neon-text text-lg sm:text-xl">
             {tr('loginTitle')}
           </h1>
@@ -64,6 +66,13 @@ export function LoginScreen({
         </div>
 
         <form onSubmit={submit} className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3 rounded border-2 border-border bg-card/40 px-3 py-2">
+            <span className="font-sans text-sm text-muted-foreground">
+              {tr('loginLangLabel')}
+            </span>
+            <LocaleToggle />
+          </div>
+
           <div>
             <label
               htmlFor="pilot-name"

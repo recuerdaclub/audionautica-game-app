@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { FullscreenButton } from './fullscreen-button'
 import { KioskGuard } from './kiosk-guard'
 import { LocaleToggle } from './locale-toggle'
+import { AudionauticaLogoMark } from './audionautica-logo'
 
 type ScreenFrameProps = {
   title: string
@@ -36,9 +37,10 @@ export function ScreenFrame({
         <button
           type="button"
           onClick={onTitleClick}
-          className="font-pixel text-[10px] leading-tight neon-text tracking-tight sm:text-xs"
+          className="flex min-w-0 items-center gap-2 font-pixel text-[10px] leading-tight neon-text tracking-tight sm:text-xs"
         >
-          {title}
+          <AudionauticaLogoMark size="xs" />
+          <span className="truncate">{title}</span>
         </button>
         <div className="flex items-center gap-2">
           {pilotName && (

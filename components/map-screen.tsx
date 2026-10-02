@@ -7,6 +7,8 @@ import { SoundToggle } from './sound-toggle'
 import { UniverseMap } from './universe-map'
 import { circuitForLocale } from '@/lib/circuits-locale'
 import { useI18n } from '@/lib/i18n/context'
+import type { ConceptEntry } from '@/lib/concepts'
+import { useConceptDisplay } from './use-concept-display'
 import type { Journey } from '@/lib/storage'
 
 type FrameProps = {
@@ -45,6 +47,8 @@ export function MapScreen({
 }: MapScreenProps) {
   const { locale, tr } = useI18n()
   const circuit = circuitForLocale(journey.circuit, locale)
+  const displayWord1 = useConceptDisplay(journey.word1)
+  const displayWord2 = useConceptDisplay(journey.word2)
   const [landArmed, setLandArmed] = useState(false)
 
   return (
@@ -59,9 +63,9 @@ export function MapScreen({
     >
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {/* Conceptos arriba — móvil y PC */}
-        <div className="grid shrink-0 grid-cols-1 gap-2 border-b-2 border-border p-3 sm:grid-cols-2 sm:gap-3 sm:p-4 lg:gap-4 lg:p-5">
-          <ConceptCard label={tr('concept01')} word={journey.word1} priority />
-          <ConceptCard label={tr('concept02')} word={journey.word2} priority />
+        <div className="grid shrink-0 grid-cols-1 gap-2 border-b-2 border-border p-3 sm:grid-cols-2 sm:gap-4 sm:p-4 lg:gap-5 lg:p-6">
+          <ConceptCard label={tr('concept01')} entry={journey.word1} priority />
+          <ConceptCard label={tr('concept02')} entry={journey.word2} priority />
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
@@ -69,8 +73,8 @@ export function MapScreen({
             <UniverseMap
               activeCircuit={journey.circuit}
               circuitLabel={circuit?.short ?? journey.circuit}
-              word1={journey.word1}
-              word2={journey.word2}
+              word1={displayWord1}
+              word2={displayWord2}
             />
           </div>
 
@@ -85,6 +89,11 @@ export function MapScreen({
               <p className="amber-text mt-2 font-pixel text-[clamp(1rem,3.5vw,1.75rem)] leading-snug text-balance lg:text-[clamp(1.15rem,2.1vw,2.35rem)]">
                 {circuit?.short}
               </p>
+              {circuit?.plain && (
+                <p className="mt-3 font-sans text-base leading-snug text-muted-foreground text-pretty sm:text-lg">
+                  {circuit.plain}
+                </p>
+              )}
             </div>
 
             {lowWords && (
@@ -149,17 +158,20 @@ export function MapScreen({
 
 function ConceptCard({
   label,
-  word,
+  entry,
   priority = false,
 }: {
   label: string
-  word: string
+  entry: ConceptEntry
   priority?: boolean
 }) {
+  const word = useConceptDisplay(entry)
   return (
     <div
-      className={`flex min-h-0 flex-col border-2 border-border bg-card/50 px-3 py-3 sm:px-4 sm:py-4 lg:px-5 lg:py-4 ${
-        priority ? 'min-h-[5.5rem] sm:min-h-[6.5rem] lg:min-h-[7.5rem]' : 'h-full'
+      className={`flex min-h-0 flex-col border-2 border-border bg-card/50 px-3 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-5 ${
+        priority
+          ? 'min-h-[6.5rem] sm:min-h-[8rem] lg:min-h-[11rem] xl:min-h-[12.5rem]'
+          : 'h-full'
       }`}
     >
       <span className="shrink-0 font-sans text-xs tracking-widest text-muted-foreground sm:text-sm lg:text-base">
@@ -199,10 +211,10 @@ function FitText({ text, large = false }: { text: string; large?: boolean }) {
       probe.textContent = text
       box.appendChild(probe)
 
-      let lo = large ? 28 : 36
+      let lo = large ? 40 : 36
       let hi = Math.max(
-        large ? 40 : 48,
-        Math.min(width * 0.9, height * 0.92, large ? 320 : 240),
+        large ? 56 : 48,
+        Math.min(width * 0.95, height * 0.94, large ? 520 : 240),
       )
       while (hi - lo > 1) {
         const mid = (lo + hi) / 2
@@ -220,7 +232,7 @@ function FitText({ text, large = false }: { text: string; large?: boolean }) {
     const ro = new ResizeObserver(fit)
     ro.observe(box)
     return () => ro.disconnect()
-  }, [text])
+  }, [text, large])
 
   return (
     <div

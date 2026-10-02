@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { ScreenFrame } from './screen-frame'
 import { SoundToggle } from './sound-toggle'
+import { AudionauticaLogoMark } from './audionautica-logo'
 import { useI18n } from '@/lib/i18n/context'
 
 type IntroScreenProps = {
@@ -57,7 +58,8 @@ export function IntroScreen({
       headerRight={<SoundToggle on={soundOn} onToggle={onToggleSound} />}
     >
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-5 py-8">
-        <div className="w-full max-w-xl">
+        <div className="flex w-full max-w-xl flex-col items-center">
+          <AudionauticaLogoMark size="hero" className="mb-4 sm:mb-5" />
           <h1 className="font-pixel neon-text flicker text-center text-2xl leading-relaxed text-balance sm:text-4xl">
             {tr('appTitle')}
           </h1>

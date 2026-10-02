@@ -6,6 +6,8 @@ import { ScreenFrame } from './screen-frame'
 import { SoundToggle } from './sound-toggle'
 import { PixelDice } from './pixel-dice'
 import { useI18n } from '@/lib/i18n/context'
+import type { ConceptEntry } from '@/lib/concepts'
+import { useConceptDisplay } from './use-concept-display'
 
 type FrameProps = {
   soundOn: boolean
@@ -15,8 +17,8 @@ type FrameProps = {
 }
 
 type LaunchScreenProps = FrameProps & {
-  word1: string
-  word2: string
+  word1: ConceptEntry
+  word2: ConceptEntry
   remaining: number
   lowWords: boolean
   onComplete: (circuit: string) => void
@@ -103,12 +105,12 @@ export function LaunchScreen({
         <div className="flex w-full shrink-0 flex-col gap-3 sm:gap-4">
           <WordSlot
             label={tr('concept01')}
-            word={word1}
+            entry={word1}
             revealed={step >= 1}
           />
           <WordSlot
             label={tr('concept02')}
-            word={word2}
+            entry={word2}
             revealed={step >= 2}
           />
         </div>
@@ -161,29 +163,30 @@ export function LaunchScreen({
 
 function WordSlot({
   label,
-  word,
+  entry,
   revealed,
 }: {
   label: string
-  word: string
+  entry: ConceptEntry
   revealed: boolean
 }) {
+  const word = useConceptDisplay(entry)
   return (
     <div className="flex w-full max-w-6xl flex-col gap-2 border-2 border-border bg-card/50 px-4 py-4 text-left sm:gap-3 sm:px-6 sm:py-5 lg:py-6">
       <span className="shrink-0 font-sans text-sm tracking-widest text-muted-foreground sm:text-base lg:text-lg">
         {label}
       </span>
-      <div className="min-h-[3.25rem] sm:min-h-[4rem] lg:min-h-[5rem]">
+      <div className="min-h-[4rem] sm:min-h-[5rem] lg:min-h-[7.5rem] xl:min-h-[8.5rem]">
         {revealed ? (
           <span
             key={word}
-            className="font-pixel neon-text block break-words text-[clamp(2rem,9vw,3.25rem)] leading-tight sm:text-[clamp(2.25rem,6vw,4rem)] lg:text-[clamp(2.75rem,4.5vw,5rem)]"
+            className="font-pixel neon-text block break-words text-[clamp(2.25rem,11vw,4.25rem)] leading-[1.05] sm:text-[clamp(2.75rem,8vw,5.5rem)] lg:text-[clamp(3.5rem,5.5vw,7.5rem)] xl:text-[clamp(4rem,4.5vw,8.5rem)]"
             style={{ animation: 'reveal-in 0.45s ease-out both' }}
           >
             {word}
           </span>
         ) : (
-          <span className="font-pixel block text-[clamp(2rem,9vw,3.25rem)] tracking-widest text-muted-foreground sm:text-[clamp(2.25rem,6vw,4rem)] lg:text-[clamp(2.75rem,4.5vw,5rem)]">
+          <span className="font-pixel block text-[clamp(2.25rem,11vw,4.25rem)] leading-[1.05] tracking-widest text-muted-foreground sm:text-[clamp(2.75rem,8vw,5.5rem)] lg:text-[clamp(3.5rem,5.5vw,7.5rem)] xl:text-[clamp(4rem,4.5vw,8.5rem)]">
             ▓▓▓▓▓▓
           </span>
         )}
